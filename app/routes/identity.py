@@ -2,6 +2,9 @@ from fastapi import APIRouter, Depends, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
+from fastapi.responses import RedirectResponse, HTMLResponse
+from app.auth.gmail import get_gmail_flow, extract_sender_domains
+
 
 from app.deps import get_db
 from app.models import Identity, Account, Signal
@@ -156,3 +159,52 @@ def dashboard(request: Request, email: str, db: Session = Depends(get_db)):
             "score": score
         }
     )
+
+# ---------- GMAIL AUTH ----------
+@router.get("/auth/gmail")
+def gmail_auth():
+    flow = get_gmail_flow()
+    flow.redirect_uri = "http://127.0.0.1:8000/auth/gmail/callback"
+
+    auth_url, _ = flow.authorization_url(
+        access_type="offline",
+        prompt="consent"
+    )
+
+    return RedirectResponse(auth_url)
+
+@router.get("/auth/gmail/callback")
+def gmail_callback(request: Request, db: Session = Depends(get_db)):
+    flow = get_gmail_flow()
+    flow.redirect_uri = "http://127.0.0.1:8000/auth/gmail/callback"
+
+    # Exchange auth code for tokens
+    flow.fetch_token(authorization_response=str(request.url))
+    credentials = flow.credentials
+
+    # Get user's email from ID token
+    email = credentials.id_token.get("email")
+    if not email:
+        return HTMLResponse("Unable to verify Gmail account", status_code=400)
+
+    # Extract sender domains
+    domains = extract_sender_domains(credentials)
+
+    identity = db.query(Identity).filter_by(email=email).first()
+    if not identity:
+        return HTMLResponse("Identity not found", status_code=400)
+
+    accounts = db.query(Account).filter_by(identity_id=identity.id).all()
+
+    for acc in accounts:
+        for d in domains:
+            if d in acc.service.lower():
+                acc.confirmed = True
+
+    db.commit()
+
+    return RedirectResponse(
+        url=f"/identity/dashboard?email={email}",
+        status_code=303
+    )
+

@@ -15,6 +15,26 @@
 
 <hr>
 
+<h3>Confirm accounts via Gmail</h3>
+
+<p style="max-width: 500px;">
+  Connect Gmail to confirm which services actually use your email.
+  <br>
+  <small>
+    Nexus reads <strong>sender metadata only</strong> (who sent the email),
+    never email content.
+  </small>
+</p>
+
+<form method="get" action="/auth/gmail">
+  <button type="submit">
+    Confirm with Gmail
+  </button>
+</form>
+
+<hr>
+
+
 {% for a in accounts %}
   <div style="border:1px solid #ccc; padding:10px; margin-top:10px">
     <strong>{{ a.service }}</strong><br>
