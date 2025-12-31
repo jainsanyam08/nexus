@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Nexus Dashboard</title>
+</head>
+<body>
+
+<h2>Identity Health: {{ score }}/100</h2>
+<p>Email: {{ email }}</p>
+
+<form method="post" action="/identity/map">
+  <input type="hidden" name="email" value="{{ email }}">
+  <button type="submit">Re-scan Identity</button>
+</form>
+
+<hr>
+
+{% for a in accounts %}
+  <div style="border:1px solid #ccc; padding:10px; margin-top:10px">
+    <strong>{{ a.service }}</strong><br>
+    Confidence: {{ a.confidence }}%<br>
+
+    <ul>
+      {% for s in a.signals %}
+        <li>{{ s }}</li>
+      {% endfor %}
+    </ul>
+
+    {% if not a.confirmed %}
+    <form method="post" action="/identity/confirm">
+      <input type="hidden" name="account_id" value="{{ a.id }}">
+      <input type="hidden" name="email" value="{{ email }}">
+      <button type="submit">Yes, this is mine</button>
+    </form>
+    {% endif %}
+
+    <form method="post" action="/identity/ignore">
+      <input type="hidden" name="account_id" value="{{ a.id }}">
+      <input type="hidden" name="email" value="{{ email }}">
+      <button type="submit">Not mine</button>
+    </form>
+  </div>
+{% endfor %}
+
+</body>
+</html>
